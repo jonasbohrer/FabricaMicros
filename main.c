@@ -3,9 +3,8 @@
 int amarelo = 0;
 int verde = 0;
 int vermelho = 0;
-float temperatura;
+float temperatura, temperatura_alvo;
 char status[12];
-
 
 //Funções LCD
 
@@ -177,7 +176,12 @@ int init_portas(){
     lcd_config();
 }
 
+int captura_status(){
+    //Captura sinais de temperatura e status
+}
+
 int escreve_status(float temperatura, char[] status){
+    //Escreve temperatura e status no LCD
 
     char temperatura_str[12];
     sprintf(temperatura_str, "%f", temperatura);
@@ -208,12 +212,16 @@ int main()
 
     while(1){
         //Ler teclado
-        //le_teclado();
-
-        //Escreve temperatura e status do sistema (esteira em operação ou desligada) no lcd
-        escreve_status(temperatura, status);
+        //temperatura_alvo = le_teclado();
+        temperatura_alvo = 27.0;
         
+        //Captura a temperatura e status do sistema (esteira em operação ou desligada)
+        captura_status();
 
+        //Escreve a temperatura e status do sistema (esteira em operação ou desligada) no lcd
+        escreve_status(temperatura, status);
+                
+        //
         gera_tensao(1.4);
 
     }
