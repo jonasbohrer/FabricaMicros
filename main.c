@@ -262,6 +262,7 @@ int gera_tensao(float valor){
     //Modifica o valor de tensao baseado no parametro "valor" (de 0 a 2.5V)
     //Valor analógico para sistema aquecedor
 
+    //Garantindo que o valor está nos limites
     if (valor < 0) {
         valor = 0;
     } else if (valor > 2.5) {
