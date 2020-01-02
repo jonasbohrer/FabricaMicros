@@ -3,6 +3,7 @@
 int amarelo = 0;
 int verde = 0;
 int vermelho = 0;
+int status_valvula, status_esteira, status_pistao, produto_alvo;
 float temperatura, temperatura_alvo;
 char status[12];
 
@@ -128,11 +129,49 @@ void PIT_IRQHandler() { // Gerencia interrupts dos 3 timers
 	PIT_TFLG0 = 1;
 }	
 
+int init_lcd(){
+
+	SIM_SCGC5 |= 1 << 10; //Libera porta B
+	SIM_SCGC5 |= 1 << 13; //Libera porta E
+
+    // LCD
+    PORTB_PCR8 |= 1 << 8;
+    PORTB_PCR9 |= 1 << 8;
+    PORTB_PCR10 |= 1 << 8;
+    PORTB_PCR11 |= 1 << 8;
+    GPIOB_PDDR |= 1 << 8; //Coloca como saída
+    GPIOB_PDDR |= 1 << 9; //Coloca como saída
+    GPIOB_PDDR |= 1 << 10; //Coloca como saída
+    GPIOB_PDDR |= 1 << 11; //Coloca como saída
+
+    PORTE_PCR2 |= 1 << 8;
+    PORTE_PCR3 |= 1 << 8;
+    PORTE_PCR4 |= 1 << 8;
+    PORTE_PCR5 |= 1 << 8;
+    PORTE_PCR23 |= 1 << 8;
+    PORTE_PCR29 |= 1 << 8;
+    GPIOE_PDDR |= 1 << 2; //Coloca como saída
+    GPIOE_PDDR |= 1 << 3; //Coloca como saída
+    GPIOE_PDDR |= 1 << 4; //Coloca como saída
+    GPIOE_PDDR |= 1 << 5; //Coloca como saída
+    GPIOE_PDDR |= 1 << 23; //Coloca como saída
+    GPIOE_PDDR |= 1 << 29; //Coloca como saída
+
+    lcd_config();
+}
+
 int init_portas(){
-    // Portas
+    // Habilita fontes de clock nas Portas
 	SIM_SCGC5 |= 1 << 10; //Libera porta B
 	SIM_SCGC5 |= 1 << 13; //Libera porta E
     SIM_SCGC5 |= 1 << 11; //Libera porta C
+
+    // Habilita fontes de clock dos tmps
+	SIM_SOPT2 |= (1 << 24); //Fonte de clock dos tmps
+
+    // Habilita fontes de clock no TMP e ADC
+    SIM_SCGC6 |= (1 << 24); //Habilita TPM0
+    SIM_SCGC6 |= (1 << 27) //Habilita ADC
 	
 	// LEDS
 	PORTB_PCR18 |= 1 << 8; //Coloca como digital
@@ -166,38 +205,9 @@ int init_portas(){
     // SINAL PISTAO
     PORTC_PCR4 |= 1 << 8; //Coloca como digital 
 	GPIOC_PDDR |= 1 << 4; //Coloca como saida
-
-    // LCD
-    PORTB_PCR8 |= 1 << 8;
-    PORTB_PCR9 |= 1 << 8;
-    PORTB_PCR10 |= 1 << 8;
-    PORTB_PCR11 |= 1 << 8;
-    GPIOB_PDDR |= 1 << 8; //Coloca como saída
-    GPIOB_PDDR |= 1 << 9; //Coloca como saída
-    GPIOB_PDDR |= 1 << 10; //Coloca como saída
-    GPIOB_PDDR |= 1 << 11; //Coloca como saída
-
-    PORTE_PCR2 |= 1 << 8;
-    PORTE_PCR3 |= 1 << 8;
-    PORTE_PCR4 |= 1 << 8;
-    PORTE_PCR5 |= 1 << 8;
-    PORTE_PCR23 |= 1 << 8;
-    PORTE_PCR29 |= 1 << 8;
-    GPIOE_PDDR |= 1 << 2; //Coloca como saída
-    GPIOE_PDDR |= 1 << 3; //Coloca como saída
-    GPIOE_PDDR |= 1 << 4; //Coloca como saída
-    GPIOE_PDDR |= 1 << 5; //Coloca como saída
-    GPIOE_PDDR |= 1 << 23; //Coloca como saída
-    GPIOE_PDDR |= 1 << 29; //Coloca como saída
-	
-	// TIMER
-	SIM_SOPT2 |= (1 << 24); //Fonte de clock dos tmps
-	SIM_SCGC6 |= (1 << 24); //Habilita TPM0
-
-    lcd_config();
 }
 
-int escreve_status(float temperatura, char[] status){
+int escrever_status(float temperatura, int status){
     //Escreve temperatura e status no LCD
 
     char temperatura_str[12];
@@ -205,21 +215,32 @@ int escreve_status(float temperatura, char[] status){
 
     limpar_display();
     escrita_texto(temperatura_str); //escreve char[] temperatura
-    escrita_comando(0xc0);  //break line
-    escrita_texto(status);  //escreve char[] status
+    escrita_comando(0xc0);  //line break
+    
+    if (status == 1) {
+        escrita_texto("Ligado");  //escreve Ligado
+    } else if (status == 0) {
+        escrita_texto("Desligado");  //escreve Desligado
+    } else {
+        escrita_texto("?");  //escreve Desligado
+    }
 }
 
-float captura_temperatura(){
-    //Captura sinais de temperatura
-    return 0.0;
+float ler_temperatura(){
+    //Captura sinais de temperatura do conversor analogico-digital
+    ADC0_CFG1 = 0x0D //00001101: 11 - 16-bit conversion; 01 - bus_clock/2^;
+	ADC0_SC1A = 0; //Reinicia o estado
+
+	while (ADC0_SC2 & (1 << 7)); //Conversion Active: 0 - Conversion not in progress. 1 - Conversion in progress.
+	return (ADC0_RA + 0.0); //Resultado da conversão em float
 }
 
-int sinal_reservatorio_cheio(){
+int ler_sinal_reservatorio_cheio(){
     //Retorna o sinal de reservatorio cheio
     return (GPIOE_PDIR & (1 << 20));
 }
 
-int sinal_reservatorio_vazio(){
+int ler_sinal_reservatorio_vazio(){
     //Retorna o sinal de reservatorio vazio
     return (GPIOE_PDIR & (1 << 21));
 }
@@ -229,9 +250,11 @@ int seta_valvula(int cmd){
     if (cmd == 1) {
         GPIOC_PSOR = (1 << 6); //EN = 1
     }
-    else {
+    else if (cmd == 0) {
         GPIOC_PCOR = (1 << 6); //EN = 0
     }
+    status_valvula = cmd;
+    return 0;
 }
 
 int seta_esteira(int cmd){
@@ -239,13 +262,11 @@ int seta_esteira(int cmd){
         if (cmd == 1) {
         GPIOC_PSOR = (1 << 5); //EN = 1
     }
-    else {
+    else if (cmd == 0) {
         GPIOC_PCOR = (1 << 5); //EN = 0
     }
-}
-
-int sinal_esteira(){
-    return (GPIOC_PDIR & (1 << 5));
+    status_esteira = cmd;
+    return 0;
 }
 
 int seta_pistao_saida(int cmd){
@@ -253,12 +274,14 @@ int seta_pistao_saida(int cmd){
     if (cmd == 1) {
         GPIOC_PSOR = (1 << 4); //EN = 1
     }
-    else {
+    else if (cmd == 0) {
         GPIOC_PCOR = (1 << 4); //EN = 0
-    }	
+    } else return -1;
+    status_pistao = cmd;
+    return 0;
 }
 
-int gera_tensao(float valor){
+int gera_tensao_dac(float valor){
     //Modifica o valor de tensao baseado no parametro "valor" (de 0 a 2.5V)
     //Valor analógico para sistema aquecedor
 
@@ -279,25 +302,30 @@ int gera_tensao(float valor){
     DAC0_DAT0L = data;
 }
 
-int main()
-{
-    //Inicializa as portas a serem utilizadas e os demais componentes como lcd
-    init_sistema();
+int main(){
+    //Programa principal
+
+    //Inicializa as portas a serem utilizadas para os sinais principais + timers
+    init_portas();
+    //Inicializa as portas e configura lcd
+    init_lcd();
 
     while(1){
         //Ler teclado
-        //temperatura_alvo = le_teclado();
-        temperatura_alvo = 27.0;
+        temperatura_alvo = 27.5; //entre 27 e 28 (ao leite) ou entre 29 e 30 (meio amargo) na opção B; Fixado em 27 na opção A
+        produto_alvo = 0; //0 - barras 100g; 1 - bombons 25g; Fixado em 0 na opção B
         
         //Captura a temperatura e status do sistema (esteira em operação ou desligada)
-        temperatura = captura_temperatura();
-        status = sinal_esteira();
+        temperatura = ler_temperatura();
 
         //Escreve a temperatura e status do sistema (esteira em operação ou desligada) no lcd
-        escreve_status(temperatura, status);
+        escrever_status(temperatura, status_esteira);
                 
-        //
-        gera_tensao(1.4);
+        //Calcula o valor PID
+        pid();
+
+        //Envia o valor para a saída DAC
+        gera_tensao_dac(1.0);
 
     }
 
