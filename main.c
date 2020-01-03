@@ -12,6 +12,7 @@ float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0}
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 // Variaveis de estado
 int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado, 3 = emergencia
+int estado_producao; //0 = inativa, 1 = ativa
 int salvaEstado;
 
 
@@ -438,6 +439,16 @@ void init_sinais(){
 }
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
+void iniciar_producao(){
+	escrita_texto("Iniciando Produção");
+	estado_producao = 1;
+}
+
+void parar_producao(){
+	escrita_texto("Parando Produção");
+	estado_producao = 0;
+}
+
 void parada_de_emergencia(){
 	if (estado != 3){
 		salvaEstado = estado;
@@ -454,6 +465,10 @@ void fim_de_producao(){
 	escrita_ao_leite();
 	nova_linha();
 	escrita_meio_amargo();
+	estado = 0;
+	qtd_ao_leite = 0;
+	qtd_meio_amargo = 0;
+	parar_producao();
 }
 
 void troca_tipo_chocolate(){
@@ -542,8 +557,14 @@ void processa_acao(char tecla){
 					estado = 0;
 				} else if (tecla == '9'){ //FIM DE PRODUÇÃO
 					fim_de_producao();
-				} else if (tecla == '1'){ //TROCA ENTRE CHOCOLATE AO LEITE E AMARGO
+				} else if (tecla == '2'){ //TROCA ENTRE CHOCOLATE AO LEITE E AMARGO
 					troca_tipo_chocolate();
+				} else if (tecla == '1'){ //PARA E INICIA PRODUÇÃO
+					if (estado_producao == 0){
+						iniciar_producao();
+					} else {
+						parar_producao();
+					}
 				}
 			}
 		}
@@ -552,6 +573,7 @@ void processa_acao(char tecla){
 int main(){
     //Programa principal
 		estado = 0;
+		estado_producao = 0;
 	
     //Inicializa as portas a serem utilizadas para os sinais principais + timers
     init_portas();
