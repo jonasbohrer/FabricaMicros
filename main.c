@@ -11,8 +11,6 @@ float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0}
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 // Variaveis de estado
 int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado
-char usuario[5];
-char senha[5];
 
 
 
@@ -419,6 +417,7 @@ void init_sinais(){
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
 int testa_usuario(char tentUsuario[5]){
+	char usuario[5] = "00000";
 	int teste;
 	for (teste = 0; teste < 5; teste++){
 		if (tentUsuario[teste] != usuario[teste]){
@@ -429,6 +428,7 @@ int testa_usuario(char tentUsuario[5]){
 }
 
 int testa_senha(char tentSenha[5]){
+	char senha[5] = "12345";
 	int teste;
 	for (teste = 0; teste < 5; teste++){
 		if (tentSenha[teste] != senha[teste]){
@@ -484,7 +484,7 @@ void aguardando_senha(char primeiraLetra){
 	}
 }
 
-int processa_acao(char tecla){
+void processa_acao(char tecla){
     if (tecla != 'E'){
 			limpar_display();
 			if (estado == 0){
@@ -503,8 +503,6 @@ int processa_acao(char tecla){
 int main(){
     //Programa principal
 		estado = 0;
-		usuario = "00000"
-		senha = "12345"
 	
     //Inicializa as portas a serem utilizadas para os sinais principais + timers
     init_portas();
