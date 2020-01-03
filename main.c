@@ -304,9 +304,11 @@ int init_sinais(){
     // Inicializa os sinais de controle da fabrica
 
     // Variaveis de sinais de controle
-    status_valvula = 1;
-    status_esteira = 1;
-    status_pistao = 1;
+    seta_valvula(1);
+    seta_esteira(1);
+    seta_pistao(1);
+
+    // Variaveis de controle do produto
     produto_alvo = 0; //0 - barras 100g; 1 - bombons 25g; Fixado em 0 na opção B
 
     // Variaveis de medidas de temperatura
