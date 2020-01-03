@@ -3,7 +3,7 @@
 #define pullup (1 << 0) + (1 << 1) + (1 << 4) + (1 << 8)
 
 // Variaveis de sinais de controle
-int status_valvula, status_esteira, status_pistao, produto_alvo, qtd_ao_leite, qtd_meio_amargo, cont_esteira;
+int status_valvula, status_esteira, status_pistao, produto_alvo, qtd_ao_leite, qtd_meio_amargo, cont_esteira, cont_valvula;
 // Constantes PI
 int Kp = 2, Ki = 0.1;
 // Variaveis de medidas de temperatura
@@ -14,8 +14,7 @@ char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*
 int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado, 3 = emergencia
 int estado_producao; //0 = inativa, 1 = ativa
 int salvaEstado;
-
-
+int parada;
 
 ////////////////////////// FUNCOES LCD //////////////////////////
 
@@ -364,34 +363,52 @@ void PIT_IRQHandler() {
     seta_valor_dac(valor_dac);
 
     //Liga ou desliga a produção
-    if (estado_producao == 1 && estado != 3) {
-        //Liga a esteira
-        seta_esteira(0);
+    if (estado != 3) {
+        //Se a produção estiver ativa ou houver um procedimento de parada ativo com conteudo no reservatório, continua a produção
+        if ((ler_sinal_reservatorio_vazio() == 1 && parada == 1) || (estado_producao == 1)){
+            //Liga a esteira
+            seta_esteira(0);
 
-        //Liga ou desliga a valvula de acordo com o estado do reservatorio
-        if (ler_sinal_reservatorio_cheio() == 1){ //1 = não cheio
-            seta_valvula(0); //Liga
+            //Liga ou desliga a valvula de acordo com o estado do reservatorio ou se um procedimento de parada foi solicitado
+            if (ler_sinal_reservatorio_cheio() == 1 && parada != 1){ //1 = não cheio
+                seta_valvula(0); //Liga
+                cont_valvula++;
+            } else {
+                seta_valvula(1); //Desliga
+            }
+
+            //Se a valvula ficou ligada por pelo menos 10s (0.25s -> contagem de 40)
+            if (cont_valvula >= 40) {
+                //Liga ou desliga o pistão de acordo com o produto (25g/s)
+                if (produto_alvo == 0) {//Barras (100g)
+                    if (cont_esteira < 4) { //Se não passaram 4s (100g)
+                        seta_esteira(0); //Esteira ainda ligada
+                        cont_esteira++;
+                    } else {
+                        seta_esteira(1); //Desliga a esteira por 1s
+                        cont_esteira = 0;
+                    } 
+                } else if (produto_alvo == 1) {//Bombom (25g)
+                    if (cont_esteira < 1) { //Se não passaram 1s (25g)
+                        seta_esteira(0); //Esteira ainda ligada
+                        cont_esteira++;
+                    } else {
+                        seta_esteira(1); //Desliga a esteira por 1s
+                        cont_esteira = 0;
+                    } 
+                }
+            }
         } else {
-            seta_valvula(1); //Desliga
-        }
-
-        //Liga ou desliga o pistão de acordo com o produto (25g/s)
-        if (produto_alvo == 0) {//Barras (100g)
-            if (cont_esteira < 4) { //Se não passaram 4s (100g)
-                seta_esteira(0); //Esteira ainda ligada
-                cont_esteira++;
-            } else {
-                seta_esteira(1); //Desliga a esteira por 1s
-                cont_esteira = 0;
-            } 
-        } else if (produto_alvo == 1) {//Bombom (25g)
-            if (cont_esteira < 1) { //Se não passaram 1s (25g)
-                seta_esteira(0); //Esteira ainda ligada
-                cont_esteira++;
-            } else {
-                seta_esteira(1); //Desliga a esteira por 1s
-                cont_esteira = 0;
-            } 
+            //Desliga a esteira
+            seta_esteira(1);
+            //Desliga a valvula
+            seta_valvula(1);
+            //Desliga o pistao
+            seta_pistao_saida(1);
+            //Desliga o procedimento de parada
+            parada = 0;
+            //Reseta o contador de tempo ativo da valvula
+            cont_valvula = 0;
         }
     } else {
         //Desliga a esteira
@@ -463,6 +480,7 @@ void init_sinais(){
     // Variaveis de controle do produto
     produto_alvo = 0; //0 - barras 100g; 1 - bombons 25g; Fixado em 0 na opção B
     cont_esteira = 0;
+    cont_valvula = 0;
 
     // Variaveis de medidas de temperatura
     temperatura = 0;
@@ -480,17 +498,20 @@ void init_sinais(){
     // Variaveis de controle de produção
     estado = 0;
     estado_producao = 0;
+    parada = 0;
 }
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
 void iniciar_producao(){
 	escrita_texto("Iniciando Produção");
 	estado_producao = 1;
+    parada = 0;
 }
 
 void parar_producao(){
 	escrita_texto("Parando Produção");
 	estado_producao = 0;
+    parada = 1;
 }
 
 void parada_de_emergencia(){
