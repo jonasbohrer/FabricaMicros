@@ -11,7 +11,7 @@ int Kp = 2, Ki = 0.1;
 // Variaveis de medidas de temperatura
 float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0};
 
-//////////////////////////Funções LCD//////////////////////////
+////////////////////////// FUNCOES LCD //////////////////////////
 
 void atraso_40us_lcd()
 {
@@ -130,46 +130,7 @@ int escrever_status(float temperatura, int status){
     }
 }
 
-//////////////////////////Funções PIT//////////////////////////
-
-void pit() {
-    //Habilita PIT
-
-	SIM_SCGC6 |= (1 << 23); 
-	PIT_MCR = 0;
-	PIT_LDVAL0 = 1066666; // timer para 100ms   
-	PIT_TCTRL0 = 3;
-	NVIC_EnableIRQ(PIT_IRQn);
-}
-
-void PIT_IRQHandler() {
-    //Gerencia interrupts dos timers0
-    //Controla a temperatura através de Controle Integral (valor = Kp*erro + Ki*sum(erros_anteriores))
-
-    //Le a temperatura no adc
-    temperatura = ler_valor_adc();
-
-    //Escreve a temperatura e status do sistema (esteira em operação ou desligada) no lcd
-    escrever_status(temperatura, status_esteira);
-
-    //Atualiza os valores de erro do Controle Integral
-    erro = temperatura_alvo*(4095/3.3) - temperatura;
-    float valor_dac = Kp*erro + Ki*(erros_anteriores[0]+erros_anteriores[1]+erros_anteriores[2]+erros_anteriores[3]+erros_anteriores[4]);
-
-    erros_anteriores[4] = erros_anteriores[3];
-    erros_anteriores[3] = erros_anteriores[2];
-    erros_anteriores[2] = erros_anteriores[1];
-    erros_anteriores[1] = erros_anteriores[0];
-    erros_anteriores[0] = erro;
-
-    //Transmite o valor dac desejado (0 a 2.5V) para o DAC
-    seta_valor_dac(valor_dac);
-
-    //Reinicia PIT
-	PIT_TFLG0 = 1;
-}	
-
-//////////////////////////Funções base do sistema//////////////////////////
+////////////////////////// FUNCOES BASE DO sistema //////////////////////////
 
 int init_portas(){
     //Habilita a maioria das portas utilizadas
@@ -220,6 +181,8 @@ int init_portas(){
 	GPIOC_PDDR |= 1 << 4; //Coloca como saida
 }
 
+////////////////////////// CONTROLE ADC E DAC //////////////////////////
+
 float ler_valor_adc(){
     //Captura sinais de temperatura do conversor analogico-digital
     ADC0_CFG1 = 0x0D //00001101: 11 - 16-bit conversion; 01 - bus_clock/2^;
@@ -251,6 +214,45 @@ int seta_valor_dac(float valor){
     DAC0_DAT0H = (data>>8);
     DAC0_DAT0L = data;
 }
+
+////////////////////////// CONTROLE SINAIS DA FABRICA//////////////////////////
+
+void pit() {
+    //Habilita PIT
+
+	SIM_SCGC6 |= (1 << 23); 
+	PIT_MCR = 0;
+	PIT_LDVAL0 = 1066666; // timer para 100ms   
+	PIT_TCTRL0 = 3;
+	NVIC_EnableIRQ(PIT_IRQn);
+}
+
+void PIT_IRQHandler() {
+    //Gerencia interrupts dos timers0
+    //Controla a temperatura através de Controle Integral (valor = Kp*erro + Ki*sum(erros_anteriores))
+
+    //Le a temperatura no adc
+    temperatura = ler_valor_adc();
+
+    //Escreve a temperatura e status do sistema (esteira em operação ou desligada) no lcd
+    escrever_status(temperatura, status_esteira);
+
+    //Atualiza os valores de erro do Controle Integral
+    erro = temperatura_alvo*(4095/3.3) - temperatura;
+    float valor_dac = Kp*erro + Ki*(erros_anteriores[0]+erros_anteriores[1]+erros_anteriores[2]+erros_anteriores[3]+erros_anteriores[4]);
+
+    erros_anteriores[4] = erros_anteriores[3];
+    erros_anteriores[3] = erros_anteriores[2];
+    erros_anteriores[2] = erros_anteriores[1];
+    erros_anteriores[1] = erros_anteriores[0];
+    erros_anteriores[0] = erro;
+
+    //Transmite o valor dac desejado (0 a 2.5V) para o DAC
+    seta_valor_dac(valor_dac);
+
+    //Reinicia PIT
+	PIT_TFLG0 = 1;
+}	
 
 int ler_sinal_reservatorio_cheio(){
     //Retorna o sinal de reservatorio cheio
@@ -320,6 +322,8 @@ int init_sinais(){
     erros_anteriores[3] = 0;
     erros_anteriores[4] = 0;
 }
+
+////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
 
 int le_teclado(){
     return 0;
