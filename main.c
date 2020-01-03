@@ -10,7 +10,8 @@ int Kp = 2, Ki = 0.1;
 float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0};
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 // Variaveis de estado
-int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado
+int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado, 3 = emergencia
+int salvaEstado;
 
 
 
@@ -43,6 +44,10 @@ void escrita_comando(char comando)
 	GPIOE_PSOR = (1 << 23); //EN = 1;	
 	GPIOE_PCOR = (1 << 23); //EN = 0;
 	atraso_40us_lcd();
+}
+
+void nova_linha(){
+	escrita_comando(0xC0);
 }
 
 void escrita_valor(char comando)
@@ -416,6 +421,25 @@ void init_sinais(){
 }
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
+void parada_de_emergencia(){
+	if (estado != 3){
+		salvaEstado = estado;
+		escrita_texto("PARADA DE EMERGÊNCIA");
+		nova_linha();
+		escrita_texto("SE AFASTE DA ESTEIRA");
+		estado = 3;
+	} else {
+		estado = salvaEstado;
+	}
+}
+
+void fim_de_producao(){
+	escrita_texto("Fim de Produção");
+}
+
+void troca_tipo_chocolate(){
+}
+
 int testa_usuario(char tentUsuario[5]){
 	char usuario[5] = "00000";
 	int teste;
@@ -487,14 +511,20 @@ void aguardando_senha(char primeiraLetra){
 void processa_acao(char tecla){
     if (tecla != 'E'){
 			limpar_display();
-			if (estado == 0){
+			if (tecla == '*'){ //PARADA DE EMERGÊNCIA
+				parada_de_emergencia();
+			} else if (estado == 0){ //TENTAR COLOCAR USUARIO
 				aguardando_usuario(tecla);
-			} else if (estado == 1) {
+			} else if (estado == 1) { //TENTAR COLOCAR SENHA
 				aguardando_senha(tecla);
 			} else if (estado == 2) {
-				if (tecla == '*'){
+				if (tecla == '#'){ //DESLOGAR
 					escrita_texto("Usuario Deslogado");
 					estado = 0;
+				} else if (tecla == '9'){ //FIM DE PRODUÇÃO
+					fim_de_producao();
+				} else if (tecla == '1'){ //TROCA ENTRE CHOCOLATE AO LEITE E AMARGO
+					troca_tipo_chocolate();
 				}
 			}
 		}
