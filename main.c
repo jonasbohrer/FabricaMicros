@@ -145,7 +145,7 @@ int init_portas(){
 
     //Habilita fontes de clock no TMP e ADC
     SIM_SCGC6 |= (1 << 24); //Habilita TPM0
-    SIM_SCGC6 |= (1 << 27) //Habilita ADC0
+    SIM_SCGC6 |= (1 << 27); //Habilita ADC0
 	
 	//LEDS
 	PORTB_PCR18 |= 1 << 8; //Coloca como digital
@@ -195,7 +195,7 @@ int init_pit() {
 
 float ler_valor_adc(){
     //Captura sinais de temperatura do conversor analogico-digital
-    ADC0_CFG1 = 0x0D //00001101: 11 - 16-bit conversion; 01 - bus_clock/2^;
+    ADC0_CFG1 = 0x0D; //00001101: 11 - 16-bit conversion; 01 - bus_clock/2^;
 	ADC0_SC1A = 0; //Reinicia o estado
 
 	while (ADC0_SC2 & (1 << 7)); //Conversion Active: 0 - Conversion not in progress. 1 - Conversion in progress.
@@ -219,7 +219,7 @@ int seta_valor_dac(float valor){
     GPIOE_PDDR |= (1<<30);	//Coloca como saída
     DAC0_C0 = (1<<7);	//Liga o DAC
 
-    Short int data;
+    short int data;
     data = (4095/3.3)*valor;
     DAC0_DAT0H = (data>>8);
     DAC0_DAT0L = data;
