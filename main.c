@@ -9,6 +9,10 @@ int Kp = 2, Ki = 0.1;
 // Variaveis de medidas de temperatura
 float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0};
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
+// Variaveis de estado
+int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado
+char usuario[5];
+char senha[5];
 
 
 
@@ -133,8 +137,8 @@ void escrever_status(float temperatura, int status){
 
 //Funções teclado
 
-int testa_debounce(char l, char c){
-	int valor = 0;
+char testa_debounce(char l, char c){
+	char valor = 0;
 	int contador = 0;
 	
 	switch (l){
@@ -146,7 +150,7 @@ int testa_debounce(char l, char c){
 		break;
 		case 3: GPIOA_PCOR = 1 << 5;
 		break;
-		default: return -1;
+		default: return 'E';
 	}
 	
 	while (contador < 15){
@@ -179,14 +183,14 @@ int testa_debounce(char l, char c){
 				contador = 0;
 			}
 			break;
-			default: return -1;
+			default: return 'E';
 		};
 	}
 	
 	return valor;
 }
 
-int testa_teclado() {
+char testa_teclado() {
 	int l, c;
 		
 	for (l=0; l<4; l++) {
@@ -197,7 +201,7 @@ int testa_teclado() {
 			}
 		}
 	}
-	return -1;
+	return 'E';
 }
 
 ////////////////////////// FUNCOES INICIALIZACAO DO SISTEMA //////////////////////////
@@ -414,18 +418,94 @@ void init_sinais(){
 }
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
-
-int ler_teclado(){
-    return 0;
+int testa_usuario(char tentUsuario[5]){
+	int teste;
+	for (teste = 0; teste < 5; teste++){
+		if (tentUsuario[teste] != usuario[teste]){
+			return -1;
+		}
+	}
+	return 1;
 }
 
-int processa_acao(char tecla[]){
-    return 0;
+int testa_senha(char tentSenha[5]){
+	int teste;
+	for (teste = 0; teste < 5; teste++){
+		if (tentSenha[teste] != senha[teste]){
+			return -1;
+		}
+	}
+	return 1;
+}
+
+void aguardando_usuario(char primeiraLetra){
+	escrita_valor(primeiraLetra);
+	char tentLogin[5];
+	tentLogin[0] = primeiraLetra;
+	int letras = 1;
+	char tecla = testa_teclado();
+	while (letras < 5){
+		if (tecla != 'E'){
+			escrita_valor(tecla);
+			tentLogin[letras] = tecla;
+			letras++;
+		}
+		tecla = testa_teclado();
+	}
+	if (testa_usuario(tentLogin) == 1){
+		limpar_display();
+		estado = 1;
+		escrita_texto("Digite sua senha");
+	} else {
+		escrita_texto("Usuario Inválido");
+	}
+}
+
+void aguardando_senha(char primeiraLetra){
+	escrita_valor(primeiraLetra);
+	char tentLogin[5];
+	tentLogin[0] = primeiraLetra;
+	int letras = 1;
+	char tecla = testa_teclado();
+	while (letras < 5){
+		if (tecla != 'E'){
+			escrita_valor('*');
+			tentLogin[letras] = tecla;
+			letras++;
+		}
+		tecla = testa_teclado();
+	}
+	if (testa_senha(tentLogin) == 1){
+		limpar_display();
+		estado = 2;
+		escrita_texto("Usuario Logado");
+	} else {
+		escrita_texto("Senha Inválida");
+	}
+}
+
+int processa_acao(char tecla){
+    if (tecla != 'E'){
+			limpar_display();
+			if (estado == 0){
+				aguardando_usuario(tecla);
+			} else if (estado == 1) {
+				aguardando_senha(tecla);
+			} else if (estado == 2) {
+				if (tecla == '*'){
+					escrita_texto("Usuario Deslogado");
+					estado = 0;
+				}
+			}
+		}
 }
 
 int main(){
     //Programa principal
-
+		estado = 0;
+		usuario = "00000"
+		senha = "12345"
+	
     //Inicializa as portas a serem utilizadas para os sinais principais + timers
     init_portas();
 
@@ -440,7 +520,7 @@ int main(){
 
     while(1){
         //Ler teclado
-        char tecla = ler_teclado();
-        processa_acao(&tecla);
+        char tecla = testa_teclado();
+        processa_acao(tecla);
     }
 }
