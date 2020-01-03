@@ -1,9 +1,5 @@
 #include <MKL25Z4.h>
 
-int amarelo = 0;
-int verde = 0;
-int vermelho = 0;
-
 // Variaveis de sinais de controle
 int status_valvula, status_esteira, status_pistao, produto_alvo;
 // Constantes PI
