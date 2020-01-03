@@ -378,7 +378,7 @@ void PIT_IRQHandler() {
             }
 
             //Se a valvula ficou ligada por pelo menos 10s (0.25s -> contagem de 40)
-            if (cont_valvula >= 40) {
+            if (cont_valvula >= 40 || parada == 1) {
                 //Liga ou desliga o pistão de acordo com o produto (25g/s)
                 if (produto_alvo == 0) {//Barras (100g)
                     if (cont_esteira < 4) { //Se não passaram 4s (100g)
@@ -397,7 +397,7 @@ void PIT_IRQHandler() {
                         cont_esteira = 0;
                     } 
                 }
-            } else cont_valvula++;
+            }
         } else {
             //Desliga a esteira
             seta_esteira(1);
