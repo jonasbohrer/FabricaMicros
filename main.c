@@ -3,11 +3,12 @@
 #define pullup (1 << 0) + (1 << 1) + (1 << 4) + (1 << 8)
 
 // Variaveis de sinais de controle
-int status_valvula, status_esteira, status_pistao, produto_alvo;
+int status_valvula, status_esteira, status_pistao, produto_alvo, qtd_ao_leite, qtd_meio_amargo;
 // Constantes PI
 int Kp = 2, Ki = 0.1;
 // Variaveis de medidas de temperatura
 float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0};
+//Variavel do teclado
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 // Variaveis de estado
 int estado; // 0 = Deslogado, 1 = aguardando senha, 2 = loggado, 3 = emergencia
@@ -69,6 +70,22 @@ void escrita_texto(char texto[]){
 		escrita_valor(texto[i]);
 		atraso_40us_lcd();
 	}
+}
+
+void escrita_ao_leite(){
+	escrita_texto("Ao leite: ");
+	int dez = qtd_ao_leite/10;
+	int uni = qtd_ao_leite%10;
+	escrita_valor(dez);
+	escrita_valor(uni);
+}
+
+void escrita_meio_amargo(){
+	escrita_texto("Ao leite: ");
+	int dez = qtd_meio_amargo/10;
+	int uni = qtd_meio_amargo%10;
+	escrita_valor(dez);
+	escrita_valor(uni);
 }
 
 void limpar_display()
@@ -434,7 +451,9 @@ void parada_de_emergencia(){
 }
 
 void fim_de_producao(){
-	escrita_texto("Fim de Produção");
+	escrita_ao_leite();
+	nova_linha();
+	escrita_meio_amargo();
 }
 
 void troca_tipo_chocolate(){
