@@ -397,7 +397,7 @@ void PIT_IRQHandler() {
                         cont_esteira = 0;
                     } 
                 }
-            }
+            } else cont_valvula++;
         } else {
             //Desliga a esteira
             seta_esteira(1);
