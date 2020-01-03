@@ -3,7 +3,7 @@
 #define pullup (1 << 0) + (1 << 1) + (1 << 4) + (1 << 8)
 
 // Variaveis de sinais de controle
-int status_valvula, status_esteira, status_pistao, produto_alvo, qtd_ao_leite, qtd_meio_amargo;
+int status_valvula, status_esteira, status_pistao, produto_alvo, qtd_ao_leite, qtd_meio_amargo, cont_esteira;
 // Constantes PI
 int Kp = 2, Ki = 0.1;
 // Variaveis de medidas de temperatura
@@ -145,7 +145,7 @@ void escrever_status(float temperatura, int status){
 
     limpar_display();
     escrita_texto(temperatura_str); //escreve char[] temperatura
-    escrita_comando(0xc0);  //line break
+    nova_linha();  //line break
     
     if (status == 1) {
         escrita_texto("Ligado");  //escreve Ligado
@@ -299,7 +299,7 @@ void init_pit() {
 
 	SIM_SCGC6 |= (1 << 23); 
 	PIT_MCR = 0;
-	PIT_LDVAL0 = 1066666; // timer para 100ms   
+	PIT_LDVAL0 = 2666666; // timer para 0.25s pois é o tempo minimo dos bombons   
 	PIT_TCTRL0 = 3;
 	NVIC_EnableIRQ(PIT_IRQn);
 }
@@ -363,6 +363,45 @@ void PIT_IRQHandler() {
     //Transmite o valor dac desejado (0 a 2.5V) para o DAC
     seta_valor_dac(valor_dac);
 
+    //Liga ou desliga a produção
+    if (estado_producao == 1 && estado != 3) {
+        //Liga a esteira
+        seta_esteira(0);
+
+        //Liga ou desliga a valvula de acordo com o estado do reservatorio
+        if (ler_sinal_reservatorio_cheio() == 1){ //1 = não cheio
+            seta_valvula(0); //Liga
+        } else {
+            seta_valvula(1); //Desliga
+        }
+
+        //Liga ou desliga o pistão de acordo com o produto (25g/s)
+        if (produto_alvo == 0) {//Barras (100g)
+            if (cont_esteira < 4) { //Se não passaram 4s (100g)
+                seta_esteira(0); //Esteira ainda ligada
+                cont_esteira++;
+            } else {
+                seta_esteira(1); //Desliga a esteira por 1s
+                cont_esteira = 0;
+            } 
+        } else if (produto_alvo == 1) {//Bombom (25g)
+            if (cont_esteira < 1) { //Se não passaram 1s (25g)
+                seta_esteira(0); //Esteira ainda ligada
+                cont_esteira++;
+            } else {
+                seta_esteira(1); //Desliga a esteira por 1s
+                cont_esteira = 0;
+            } 
+        }
+    } else {
+        //Desliga a esteira
+        seta_esteira(1);
+        //Desliga a valvula
+        seta_valvula(1);
+        //Desliga o pistao
+        seta_pistao_saida(1);
+    }
+
     //Reinicia PIT
 	PIT_TFLG0 = 1;
 }	
@@ -380,10 +419,10 @@ int ler_sinal_reservatorio_vazio(){
 int seta_valvula(int cmd){
     //Altera o sinal digital para ligar válvula de movimentação de chocolate
     if (cmd == 1) {
-        GPIOC_PSOR = (1 << 6); //EN = 1
+        GPIOC_PSOR = (1 << 6); //EN = 0
     }
     else if (cmd == 0) {
-        GPIOC_PCOR = (1 << 6); //EN = 0
+        GPIOC_PCOR = (1 << 6); //EN = 1
     }
     status_valvula = cmd;
     return 0;
@@ -391,11 +430,11 @@ int seta_valvula(int cmd){
 
 int seta_esteira(int cmd){
     //Altera o sinal digital para ligar esteira
-        if (cmd == 1) {
-        GPIOC_PSOR = (1 << 5); //EN = 1
+    if (cmd == 1) {
+        GPIOC_PSOR = (1 << 5); //EN = 0
     }
     else if (cmd == 0) {
-        GPIOC_PCOR = (1 << 5); //EN = 0
+        GPIOC_PCOR = (1 << 5); //EN = 1
     }
     status_esteira = cmd;
     return 0;
@@ -404,10 +443,10 @@ int seta_esteira(int cmd){
 int seta_pistao_saida(int cmd){
     //Altera o sinal digital para ligar pistão de saída
     if (cmd == 1) {
-        GPIOC_PSOR = (1 << 4); //EN = 1
+        GPIOC_PSOR = (1 << 4); //EN = 0
     }
     else if (cmd == 0) {
-        GPIOC_PCOR = (1 << 4); //EN = 0
+        GPIOC_PCOR = (1 << 4); //EN = 1
     } else return -1;
     status_pistao = cmd;
     return 0;
@@ -423,19 +462,24 @@ void init_sinais(){
 
     // Variaveis de controle do produto
     produto_alvo = 0; //0 - barras 100g; 1 - bombons 25g; Fixado em 0 na opção B
+    cont_esteira = 0;
 
     // Variaveis de medidas de temperatura
     temperatura = 0;
     temperatura_alvo = 27.5; //entre 27 e 28 (ao leite) ou entre 29 e 30 (meio amargo) na opção B; Fixado em 27 na opção A
     
     // Constantes e variaveis do controle PI
-    int Kp = 2, Ki = 0.1;
+    Kp = 2, Ki = 0.1;
     erro = 0;
     erros_anteriores[0] = 0;
     erros_anteriores[1] = 0;
     erros_anteriores[2] = 0;
     erros_anteriores[3] = 0;
     erros_anteriores[4] = 0;
+
+    // Variaveis de controle de produção
+    estado = 0;
+    estado_producao = 0;
 }
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
@@ -472,6 +516,9 @@ void fim_de_producao(){
 }
 
 void troca_tipo_chocolate(){
+    if (produto_alvo == 0) {
+        produto_alvo = 1;
+    } else produto_alvo = 0;
 }
 
 int testa_usuario(char tentUsuario[5]){
@@ -572,8 +619,6 @@ void processa_acao(char tecla){
 
 int main(){
     //Programa principal
-		estado = 0;
-		estado_producao = 0;
 	
     //Inicializa as portas a serem utilizadas para os sinais principais + timers
     init_portas();
