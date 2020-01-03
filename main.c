@@ -130,7 +130,7 @@ int escrever_status(float temperatura, int status){
     }
 }
 
-////////////////////////// FUNCOES BASE DO sistema //////////////////////////
+////////////////////////// FUNCOES INICIALIZACAO DO SISTEMA //////////////////////////
 
 int init_portas(){
     //Habilita a maioria das portas utilizadas
@@ -225,7 +225,7 @@ int seta_valor_dac(float valor){
     DAC0_DAT0L = data;
 }
 
-////////////////////////// CONTROLE SINAIS DA FABRICA//////////////////////////
+////////////////////////// CONTROLE SINAIS DA FABRICA //////////////////////////
 
 void PIT_IRQHandler() {
     //Gerencia interrupts dos timers0
@@ -325,7 +325,11 @@ int init_sinais(){
 
 ////////////////////////// PROGRAMA PRINCIPAL //////////////////////////
 
-int le_teclado(){
+int ler_teclado(){
+    return 0;
+}
+
+int processa_acao(char tecla[]){
     return 0;
 }
 
@@ -346,6 +350,7 @@ int main(){
 
     while(1){
         //Ler teclado
-        ler_teclado();
+        char tecla = ler_teclado();
+        processa_acao(tecla);
     }
 }
