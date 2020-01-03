@@ -1,10 +1,13 @@
 #include <MKL25Z4.h>
 
+#define pullup (1 << 0) + (1 << 1) + (1 << 4) + (1 << 8)
+
 int amarelo = 0;
 int verde = 0;
 int vermelho = 0;
 float temperatura, temperatura_alvo;
 char status[12];
+char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 
 //Funções LCD
 
@@ -100,6 +103,73 @@ void pit() {
 	PIT_LDVAL0 = 32000000; // timer para 3s  
 }
 
+int testa_debounce(char l, char c){
+	int valor = 0;
+	int contador = 0;
+	
+	switch (l){
+		case 0: GPIOA_PCOR = 1 << 1;
+		break;
+		case 1: GPIOA_PCOR = 1 << 2;
+		break;
+		case 2: GPIOA_PCOR = 1 << 12;
+		break;
+		case 3: GPIOA_PCOR = 1 << 5;
+		break;
+		default: return -1;
+	}
+	
+	while (contador < 15){
+		switch (c){
+			case 0: if ((GPIOC_PDIR & (1 << 3)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 3));
+				contador = 0;
+			}
+			break;
+			case 1: if ((GPIOC_PDIR & (1 << 4)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 4));
+				contador = 0;
+			}
+			break;
+			case 2: if ((GPIOC_PDIR & (1 << 5)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 5));
+				contador = 0;
+			}
+			break;
+			case 3: if ((GPIOC_PDIR & (1 << 6)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 6));
+				contador = 0;
+			}
+			break;
+			default: return -1;
+		};
+	}
+	
+	return valor;
+}
+
+int testa_teclado() {
+	int l, c;
+		
+	for (l=0; l<4; l++) {
+		for (c=0; c<4; c++) {
+			if (testa_debounce(l,c) == 0) {
+				atraso_40us_lcd();
+				return dataTeclado[l][c];
+			}
+		}
+	}
+	return -1;
+}
+
 void PIT_IRQHandler() { // Gerencia interrupts dos 3 timers
 	if (verde == 1) //Verde acabou, amarelo come�ou e carrega vermelho
 	{
@@ -128,11 +198,12 @@ void PIT_IRQHandler() { // Gerencia interrupts dos 3 timers
 	PIT_TFLG0 = 1;
 }	
 
-int init_portas(){
+void init_portas(){
     // Portas
 	SIM_SCGC5 |= 1 << 10; //Libera porta B
 	SIM_SCGC5 |= 1 << 13; //Libera porta E
-    SIM_SCGC5 |= 1 << 11; //Libera porta C
+  SIM_SCGC5 |= 1 << 11; //Libera porta C
+	SIM_SCGC5 |= 1 << 9;  //Libera porta A
 	
 	// LEDS
 	PORTB_PCR18 |= 1 << 8; //Coloca como digital
@@ -142,7 +213,25 @@ int init_portas(){
 	GPIOB_PDDR |= 1 << 19; //Coloca como saída
 	GPIOB_PTOR = (1 << 18); //Desliga led
 	GPIOB_PTOR = (1 << 19); //Desliga led
-
+	
+	//TECLADO
+	PORTA_PCR1 |= 1 << 8; //Coloca como digital
+	GPIOA_PDDR |= 1 << 1; //Coloca como saída
+	PORTA_PCR2 |= 1 << 8;  //Coloca como digital
+	GPIOA_PDDR |= 1 << 2; //Coloca como saída
+	PORTA_PCR12 |= 1 << 8;//Coloca como digital
+	GPIOA_PDDR |= 1 << 12; //Coloca como saída
+	PORTA_PCR5 |= 1 << 8; //Coloca como digital
+	GPIOA_PDDR |= 1 << 5; //Coloca como saída
+	PORTC_PCR3 |= pullup;
+	PORTC_PCR4 |= pullup;
+	PORTC_PCR5 |= pullup;
+	PORTC_PCR6 |= pullup;
+	GPIOC_PDDR |= 0 << 3; //Coloca como entrada
+	GPIOC_PDDR |= 0 << 4; //Coloca como entrada
+	GPIOC_PDDR |= 0 << 5; //Coloca como entrada
+	GPIOC_PDDR |= 0 << 6; //Coloca como entrada
+	
     // OUTPUT DAC
     PORTE_PCR30 |= 3 << 8; //Coloca como digital
     GPIOE_PDDR |= 1 << 30; //Coloca como saída 
@@ -197,11 +286,11 @@ int init_portas(){
     lcd_config();
 }
 
-int escreve_status(float temperatura, char[] status){
+void escreve_status(float temperatura, char status[]){
     //Escreve temperatura e status no LCD
 
     char temperatura_str[12];
-    sprintf(temperatura_str, "%f", temperatura);
+    //sprintf(temperatura_str, "%f", temperatura);
 
     limpar_display();
     escrita_texto(temperatura_str); //escreve char[] temperatura
@@ -214,17 +303,17 @@ float captura_temperatura(){
     return 0.0;
 }
 
-int sinal_reservatorio_cheio(){
+char sinal_reservatorio_cheio(){
     //Retorna o sinal de reservatorio cheio
     return (GPIOE_PDIR & (1 << 20));
 }
 
-int sinal_reservatorio_vazio(){
+char sinal_reservatorio_vazio(){
     //Retorna o sinal de reservatorio vazio
     return (GPIOE_PDIR & (1 << 21));
 }
 
-int seta_valvula(int cmd){
+void seta_valvula(int cmd){
     //Altera o sinal digital para ligar válvula de movimentação de chocolate
     if (cmd == 1) {
         GPIOC_PSOR = (1 << 6); //EN = 1
@@ -234,7 +323,7 @@ int seta_valvula(int cmd){
     }
 }
 
-int seta_esteira(int cmd){
+void seta_esteira(int cmd){
     //Altera o sinal digital para ligar esteira
         if (cmd == 1) {
         GPIOC_PSOR = (1 << 5); //EN = 1
@@ -244,11 +333,11 @@ int seta_esteira(int cmd){
     }
 }
 
-int sinal_esteira(){
+char sinal_esteira(){
     return (GPIOC_PDIR & (1 << 5));
 }
 
-int seta_pistao_saida(int cmd){
+void seta_pistao_saida(int cmd){
     //Altera o sinal digital para ligar pistão de saída
     if (cmd == 1) {
         GPIOC_PSOR = (1 << 4); //EN = 1
@@ -258,7 +347,7 @@ int seta_pistao_saida(int cmd){
     }	
 }
 
-int gera_tensao(float valor){
+void gera_tensao(float valor){
     //Modifica o valor de tensao baseado no parametro "valor" (de 0 a 2.5V)
     //Valor analógico para sistema aquecedor
 
@@ -273,10 +362,15 @@ int gera_tensao(float valor){
     GPIOE_PDDR |= (1<<30);	//Coloca como saída
     DAC0_C0 = (1<<7);	//Liga o DAC
 
-    Short int data;
+    short int data;
     data = (4095/3.3)*valor;
     DAC0_DAT0H = (data>>8);
     DAC0_DAT0L = data;
+}
+
+void init_sistema(){
+	init_portas();
+	lcd_config();
 }
 
 int main()
@@ -300,7 +394,4 @@ int main()
         gera_tensao(1.4);
 
     }
-
-
-
 }
