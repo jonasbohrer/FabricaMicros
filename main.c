@@ -181,6 +181,16 @@ int init_portas(){
 	GPIOC_PDDR |= 1 << 4; //Coloca como saida
 }
 
+int init_pit() {
+    //Habilita PIT
+
+	SIM_SCGC6 |= (1 << 23); 
+	PIT_MCR = 0;
+	PIT_LDVAL0 = 1066666; // timer para 100ms   
+	PIT_TCTRL0 = 3;
+	NVIC_EnableIRQ(PIT_IRQn);
+}
+
 ////////////////////////// CONTROLE ADC E DAC //////////////////////////
 
 float ler_valor_adc(){
@@ -216,16 +226,6 @@ int seta_valor_dac(float valor){
 }
 
 ////////////////////////// CONTROLE SINAIS DA FABRICA//////////////////////////
-
-void pit() {
-    //Habilita PIT
-
-	SIM_SCGC6 |= (1 << 23); 
-	PIT_MCR = 0;
-	PIT_LDVAL0 = 1066666; // timer para 100ms   
-	PIT_TCTRL0 = 3;
-	NVIC_EnableIRQ(PIT_IRQn);
-}
 
 void PIT_IRQHandler() {
     //Gerencia interrupts dos timers0
@@ -335,6 +335,9 @@ int main(){
     //Inicializa as portas a serem utilizadas para os sinais principais + timers
     init_portas();
 
+    //Inicializa o PIT e interrupcoes
+    init_pit();
+
     //Inicializa as portas e configura lcd
     init_lcd();
 
@@ -343,6 +346,6 @@ int main(){
 
     while(1){
         //Ler teclado
-        le_teclado();
+        ler_teclado();
     }
 }
