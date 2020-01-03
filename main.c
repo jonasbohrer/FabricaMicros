@@ -1,5 +1,7 @@
 #include <MKL25Z4.h>
 
+#define pullup (1 << 0) + (1 << 1) + (1 << 4) + (1 << 8)
+
 // Variaveis de sinais de controle
 int status_valvula, status_esteira, status_pistao, produto_alvo;
 // Constantes PI
@@ -9,74 +11,6 @@ float temperatura, temperatura_alvo, erro, erros_anteriores[5] = {0, 0, 0, 0, 0}
 char dataTeclado[4][4] = { '1','2','3','A', '4','5','6','B', '7','8','9','C', '*','0','#','D' };
 
 
-//Funções teclado
-
-int testa_debounce(char l, char c){
-	int valor = 0;
-	int contador = 0;
-	
-	switch (l){
-		case 0: GPIOA_PCOR = 1 << 1;
-		break;
-		case 1: GPIOA_PCOR = 1 << 2;
-		break;
-		case 2: GPIOA_PCOR = 1 << 12;
-		break;
-		case 3: GPIOA_PCOR = 1 << 5;
-		break;
-		default: return -1;
-	}
-	
-	while (contador < 15){
-		switch (c){
-			case 0: if ((GPIOC_PDIR & (1 << 3)) == valor){
-				contador++;
-			} else {
-				valor = (GPIOC_PDIR & (1 << 3));
-				contador = 0;
-			}
-			break;
-			case 1: if ((GPIOC_PDIR & (1 << 4)) == valor){
-				contador++;
-			} else {
-				valor = (GPIOC_PDIR & (1 << 4));
-				contador = 0;
-			}
-			break;
-			case 2: if ((GPIOC_PDIR & (1 << 5)) == valor){
-				contador++;
-			} else {
-				valor = (GPIOC_PDIR & (1 << 5));
-				contador = 0;
-			}
-			break;
-			case 3: if ((GPIOC_PDIR & (1 << 6)) == valor){
-				contador++;
-			} else {
-				valor = (GPIOC_PDIR & (1 << 6));
-				contador = 0;
-			}
-			break;
-			default: return -1;
-		};
-	}
-	
-	return valor;
-}
-
-int testa_teclado() {
-	int l, c;
-		
-	for (l=0; l<4; l++) {
-		for (c=0; c<4; c++) {
-			if (testa_debounce(l,c) == 0) {
-				atraso_40us_lcd();
-				return dataTeclado[l][c];
-			}
-		}
-	}
-	return -1;
-}
 
 ////////////////////////// FUNCOES LCD //////////////////////////
 
@@ -147,7 +81,7 @@ void lcd_config()
 	atraso_1650us();
 }
 
-int init_lcd(){
+void init_lcd(){
 
 	SIM_SCGC5 |= 1 << 10; //Libera porta B
 	SIM_SCGC5 |= 1 << 13; //Libera porta E
@@ -178,11 +112,11 @@ int init_lcd(){
     lcd_config();
 }
 
-int escrever_status(float temperatura, int status){
+void escrever_status(float temperatura, int status){
     //Escreve temperatura e status no LCD
 
     char temperatura_str[12];
-    sprintf(temperatura_str, "%f", temperatura);
+    //sprintf(temperatura_str, "%f", temperatura);
 
     limpar_display();
     escrita_texto(temperatura_str); //escreve char[] temperatura
@@ -197,9 +131,78 @@ int escrever_status(float temperatura, int status){
     }
 }
 
+//Funções teclado
+
+int testa_debounce(char l, char c){
+	int valor = 0;
+	int contador = 0;
+	
+	switch (l){
+		case 0: GPIOA_PCOR = 1 << 1;
+		break;
+		case 1: GPIOA_PCOR = 1 << 2;
+		break;
+		case 2: GPIOA_PCOR = 1 << 12;
+		break;
+		case 3: GPIOA_PCOR = 1 << 5;
+		break;
+		default: return -1;
+	}
+	
+	while (contador < 15){
+		switch (c){
+			case 0: if ((GPIOC_PDIR & (1 << 3)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 3));
+				contador = 0;
+			}
+			break;
+			case 1: if ((GPIOC_PDIR & (1 << 4)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 4));
+				contador = 0;
+			}
+			break;
+			case 2: if ((GPIOC_PDIR & (1 << 5)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 5));
+				contador = 0;
+			}
+			break;
+			case 3: if ((GPIOC_PDIR & (1 << 6)) == valor){
+				contador++;
+			} else {
+				valor = (GPIOC_PDIR & (1 << 6));
+				contador = 0;
+			}
+			break;
+			default: return -1;
+		};
+	}
+	
+	return valor;
+}
+
+int testa_teclado() {
+	int l, c;
+		
+	for (l=0; l<4; l++) {
+		for (c=0; c<4; c++) {
+			if (testa_debounce(l,c) == 0) {
+				atraso_40us_lcd();
+				return dataTeclado[l][c];
+			}
+		}
+	}
+	return -1;
+}
+
 ////////////////////////// FUNCOES INICIALIZACAO DO SISTEMA //////////////////////////
 
-int init_portas(){
+void init_portas(){
     //Habilita a maioria das portas utilizadas
 	
 	//TECLADO
@@ -266,7 +269,7 @@ int init_portas(){
 	GPIOC_PDDR |= 1 << 4; //Coloca como saida
 }
 
-int init_pit() {
+void init_pit() {
     //Habilita PIT
 
 	SIM_SCGC6 |= (1 << 23); 
@@ -289,7 +292,7 @@ float ler_valor_adc(){
 	return valor_dac; //Resultado da conversão em float
 }
 
-int seta_valor_dac(float valor){
+void seta_valor_dac(float valor){
     //Modifica o valor de tensao baseado no parametro "valor" (de 0 a 2.5V)
     //Valor analógico para sistema aquecedor
 
@@ -385,13 +388,13 @@ int seta_pistao_saida(int cmd){
     return 0;
 }
 
-int init_sinais(){
+void init_sinais(){
     // Inicializa os sinais de controle da fabrica
 
     // Variaveis de sinais de controle
     seta_valvula(1);
     seta_esteira(1);
-    seta_pistao(1);
+    seta_pistao_saida(1);
 
     // Variaveis de controle do produto
     produto_alvo = 0; //0 - barras 100g; 1 - bombons 25g; Fixado em 0 na opção B
@@ -438,6 +441,6 @@ int main(){
     while(1){
         //Ler teclado
         char tecla = ler_teclado();
-        processa_acao(tecla);
+        processa_acao(&tecla);
     }
 }

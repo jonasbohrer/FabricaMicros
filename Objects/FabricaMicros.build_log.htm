@@ -28,12 +28,14 @@ Project File Date:  01/02/2020
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'E:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'Target 1'
 compiling main.c...
-main.c(388): error:  #137: expression must be a modifiable lvalue
-          status = sinal_esteira();
-main.c(400): warning:  #1-D: last line of file ends without a newline
-  }
-main.c: 1 warning, 1 error
-".\Objects\FabricaMicros.axf" - 1 Error(s), 1 Warning(s).
+main.c(407): warning:  #177-D: variable "Kp"  was declared but never referenced
+      int Kp = 2, Ki = 0.1;
+main.c(407): warning:  #177-D: variable "Ki"  was declared but never referenced
+      int Kp = 2, Ki = 0.1;
+main.c: 2 warnings, 0 errors
+linking...
+Program Size: Code=6548 RO-data=352 RW-data=52 ZI-data=372  
+".\Objects\FabricaMicros.axf" - 0 Error(s), 2 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -60,10 +62,9 @@ Package Vendor: Keil
    * Component: ARM::CMSIS:CORE:5.3.0
 
    * Component: Keil::Device:Startup:2.5.0
-      Source file:   Device\Source\ARM\startup_MKL25Z4.s
       Include file:  Device\Source\system_MKL25Z4.h
       Source file:   Device\Source\system_MKL25Z4.c
-Target not created.
+      Source file:   Device\Source\ARM\startup_MKL25Z4.s
 Build Time Elapsed:  00:00:01
 </pre>
 </body>
